@@ -17,7 +17,7 @@ from traffic_generator import (
     TrafficGenerator,
     Metrics,
     asyncio,
-    logger as tg_logger
+    logger as tg_logger,
 )
 
 from fastapi import FastAPI, HTTPException
@@ -26,8 +26,7 @@ from pydantic import BaseModel
 from typing import Dict, Optional
 
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -37,8 +36,8 @@ app = FastAPI()
 # Global Runtime State
 # ------------------------------------------------------
 current_settings = {
-    'app_status': 'initializing',  # Initialize to 'initializing'
-    'container_status': 'running'
+    "app_status": "initializing",  # Initialize to 'initializing'
+    "container_status": "running",
 }
 
 traffic_generator_instance = None
@@ -73,7 +72,11 @@ def _ensure_config_sitemap_structure(data: dict) -> dict:
 
     if sitemap is not None:
         # Support newer payload format where sitemap may include metadata under a nested 'sitemap' key
-        if isinstance(sitemap, dict) and "sitemap" in sitemap and isinstance(sitemap["sitemap"], dict):
+        if (
+            isinstance(sitemap, dict)
+            and "sitemap" in sitemap
+            and isinstance(sitemap["sitemap"], dict)
+        ):
             data["sitemap"] = sitemap["sitemap"]
         else:
             data["sitemap"] = sitemap
@@ -117,7 +120,43 @@ def run_traffic_generator_in_loop(config, sitemap):
             event_loop.close()
 
 
-@app.get('/api/health')
+def force_stop_traffic_generator(timeout: int = 5):
+    """Aggressively stop any running traffic generator."""
+    global event_loop, traffic_generator_instance, background_thread
+
+    if not traffic_generator_instance or not event_loop or not background_thread:
+        return
+
+    current_settings["app_status"] = "stopping"
+    logger.info("Force stopping running traffic generator...")
+
+    try:
+        if event_loop.is_running() and traffic_generator_instance.running:
+            future = asyncio.run_coroutine_threadsafe(
+                traffic_generator_instance.stop_generating(), event_loop
+            )
+            try:
+                future.result(timeout=timeout)
+            except Exception as e:  # noqa: BLE001
+                logger.error(f"Stop coroutine failed or timed out: {e}")
+
+        event_loop.call_soon_threadsafe(event_loop.stop)
+    except Exception as e:  # noqa: BLE001
+        logger.error(f"Error while stopping event loop: {e}")
+    finally:
+        if background_thread.is_alive():
+            background_thread.join(timeout=timeout)
+
+        if not event_loop.is_closed():
+            event_loop.close()
+
+        traffic_generator_instance = None
+        event_loop = None
+        background_thread = None
+        current_settings["app_status"] = "stopped"
+
+
+@app.get("/api/health")
 async def health_check():
     """Basic health check endpoint."""
     return JSONResponse({"status": "healthy"})
@@ -128,7 +167,7 @@ class StartRequestWrapper(BaseModel):
     sitemap: Dict[str, Any]
 
 
-@app.post('/api/start')
+@app.post("/api/start")
 async def start_traffic_generator(data: dict):
     """
     Start the traffic generation in a background thread.
@@ -137,13 +176,8 @@ async def start_traffic_generator(data: dict):
     """
     global background_thread
 
-    if current_settings['app_status'] == 'running':
-        raise HTTPException(status_code=400, detail="Traffic generator already running")
-    if current_settings['app_status'] == 'initializing':
-        current_settings['app_status'] = 'running'
-
-    if current_settings['app_status'] == 'stopped':
-        current_settings['app_status'] = 'running'
+    if current_settings["app_status"] == "running":
+        force_stop_traffic_generator()
     # Read incoming JSON and correct if needed
     try:
 
@@ -154,56 +188,34 @@ async def start_traffic_generator(data: dict):
         logger.error(f"Invalid request body: {e}")
         raise HTTPException(status_code=400, detail=f"Invalid request body: {e}")
 
+    current_settings["app_status"] = "running"
 
     background_thread = threading.Thread(
         target=run_traffic_generator_in_loop,
         args=(req_obj.config, req_obj.sitemap),
-        daemon=True
+        daemon=True,
     )
     background_thread.start()
 
     return JSONResponse({"message": "Traffic generator started"})
 
 
-@app.post('/api/stop')
+@app.post("/api/stop")
 async def stop_traffic_generator():
     global event_loop, traffic_generator_instance, background_thread
 
-    if current_settings['app_status'] != 'running' or traffic_generator_instance is None:
+    if (
+        current_settings["app_status"] != "running"
+        or traffic_generator_instance is None
+    ):
         raise HTTPException(status_code=400, detail="No traffic generator is running")
 
-    # Immediately mark as "stopping" and respond
-    current_settings['app_status'] = 'stopping'
-    logger.info("Initiating traffic generator shutdown...")
+    force_stop_traffic_generator()
 
-    # Trigger async stop in the background
-    def async_stop():
-        try:
-            if event_loop and not event_loop.is_closed() and traffic_generator_instance.running:
-                # Run the async stop command
-                async def stopper():
-                    await traffic_generator_instance.stop_generating()
-
-                # Use the existing event loop to run the stop coroutine
-                future = asyncio.run_coroutine_threadsafe(stopper(), event_loop)
-                future.result(timeout=30)  # Wait up to 30s for graceful stop
-
-            # Final state update
-            current_settings['app_status'] = 'stopped'
-            logger.info("Traffic generator fully stopped.")
-
-        except Exception as e:
-            # If stopping fails, log but keep state as "stopping"
-            logger.error(f"Background stop failed: {e}")
-            current_settings['app_status'] = 'running'  # Revert if needed
-
-    # Run the stop logic in a separate thread to avoid blocking
-    threading.Thread(target=async_stop, daemon=True).start()
-
-    return JSONResponse({"message": "Stop command acknowledged. Shutting down in background."})
+    return JSONResponse({"message": "Traffic generator stopped"})
 
 
-@app.get('/api/metrics')
+@app.get("/api/metrics")
 async def api_metrics():
     """
     Return combined container + traffic generator stats.
@@ -218,39 +230,40 @@ async def api_metrics():
 
     rps_val = 0.0
     if traffic_generator_instance and traffic_generator_instance.running:
+
         async def get_rps():
             return await traffic_generator_instance.metrics.get_rps()
 
         if event_loop and not event_loop.is_closed():
             try:
-                rps_val = asyncio.run_coroutine_threadsafe(get_rps(), event_loop).result(timeout=3)
+                rps_val = asyncio.run_coroutine_threadsafe(
+                    get_rps(), event_loop
+                ).result(timeout=3)
             except:
                 rps_val = 0.0
 
     resp_body = {
-        "timestamp": datetime.utcnow().isoformat() + 'Z',
-        "app_status": current_settings['app_status'],
-        "container_status": current_settings['container_status'],
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "app_status": current_settings["app_status"],
+        "container_status": current_settings["container_status"],
         "network": {
             "bytes_sent": bytes_sent,
             "bytes_recv": bytes_recv,
             "packets_sent": packets_sent,
-            "packets_recv": packets_recv
+            "packets_recv": packets_recv,
         },
         "system": {
             "cpu_percent": round(container_cpu_percent, 1),
             "memory_percent": round(container_mem.percent, 1),
             "memory_available_mb": round(container_mem.available / (1024 * 1024), 2),
-            "memory_used_mb": round(container_mem.used / (1024 * 1024), 2)
+            "memory_used_mb": round(container_mem.used / (1024 * 1024), 2),
         },
-        "metrics": {
-            "rps": float(rps_val)
-        }
+        "metrics": {"rps": float(rps_val)},
     }
     return JSONResponse(resp_body)
 
 
-@app.get('/metrics')
+@app.get("/metrics")
 async def metrics_prometheus():
     """
     Prometheus /metrics with combined container + traffic generator stats.
@@ -265,12 +278,15 @@ async def metrics_prometheus():
 
     rps_val = 0.0
     if traffic_generator_instance and traffic_generator_instance.running:
+
         async def get_rps():
             return await traffic_generator_instance.metrics.get_rps()
 
         if event_loop and not event_loop.is_closed():
             try:
-                rps_val = asyncio.run_coroutine_threadsafe(get_rps(), event_loop).result(timeout=3)
+                rps_val = asyncio.run_coroutine_threadsafe(
+                    get_rps(), event_loop
+                ).result(timeout=3)
             except:
                 rps_val = 0.0
     lines = [
@@ -301,12 +317,11 @@ async def metrics_prometheus():
         "# HELP traffic_generator_rps Current requests-per-second.",
         "# TYPE traffic_generator_rps gauge",
         f"container_rps {rps_val}",
-        "# HELP app_status Application status.",             # Add app_status metric
-        "# TYPE app_status gauge",                           #
+        "# HELP app_status Application status.",  # Add app_status metric
+        "# TYPE app_status gauge",  #
         f"app_status{{status=\"initializing\"}} {1 if current_settings['app_status'] == 'initializing' else 0}",  # Correct status handling
-        f"app_status{{status=\"stopped\"}} {1 if current_settings['app_status'] == 'stopped' else 0}",          #
-        f"app_status{{status=\"running\"}} {1 if current_settings['app_status'] == 'running' else 0}",          #
-
+        f"app_status{{status=\"stopped\"}} {1 if current_settings['app_status'] == 'stopped' else 0}",  #
+        f"app_status{{status=\"running\"}} {1 if current_settings['app_status'] == 'running' else 0}",  #
     ]
     return Response("\n".join(lines) + "\n", media_type="text/plain")
 
@@ -316,24 +331,15 @@ def handle_signal(signum, frame):
     Handle SIGTERM/SIGINT to gracefully stop the traffic generator.
     """
     logger.info(f"Received signal {signum}; shutting down container_control.")
-    global event_loop, traffic_generator_instance
-    if traffic_generator_instance and traffic_generator_instance.running:
-        try:
-            async def stopper():
-                await traffic_generator_instance.stop_generating()
-
-            if event_loop and not event_loop.is_closed():
-                asyncio.run_coroutine_threadsafe(stopper(), event_loop).result(timeout=5)
-        except:
-            logger.warning("Traffic generator did not terminate gracefully; ignoring.")
+    force_stop_traffic_generator()
     os._exit(0)
 
 
 signal.signal(signal.SIGTERM, handle_signal)
 signal.signal(signal.SIGINT, handle_signal)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     set_memory_limits()
     import uvicorn
 
-    uvicorn.run("container_control:app", host='0.0.0.0', port=8080, reload=True)
+    uvicorn.run("container_control:app", host="0.0.0.0", port=8080, reload=True)
