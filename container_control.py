@@ -6,6 +6,7 @@ import logging
 import signal
 import os
 import psutil
+import uvicorn
 from datetime import datetime
 import resource
 from typing import Any
