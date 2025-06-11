@@ -66,6 +66,25 @@ Content-Type: application/json
 }
 ```
 
+The endpoint is backward compatible with the older format where the configuration
+keys appear at the top level:
+
+```json
+{
+  "Traffic Generator URL": "https://example.com",
+  "Traffic Generator DNS Override": "192.168.1.100",
+  "XFF Header Name": "X-Forwarded-For",
+  "Rate Limit": 10,
+  "Simulated Users": 5,
+  "Minimum Session Length": 30,
+  "Maximum Session Length": 300,
+  "sitemap": { ... }
+}
+```
+
+Additionally, if the `sitemap` object includes metadata (e.g. `id`, `name`, and a
+nested `sitemap` field), the inner `sitemap` is automatically extracted.
+
 #### Stop Traffic Generation
 ```http
 POST /api/stop

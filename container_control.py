@@ -72,7 +72,11 @@ def _ensure_config_sitemap_structure(data: dict) -> dict:
     data["config"] = config
 
     if sitemap is not None:
-        data["sitemap"] = sitemap
+        # Support newer payload format where sitemap may include metadata under a nested 'sitemap' key
+        if isinstance(sitemap, dict) and "sitemap" in sitemap and isinstance(sitemap["sitemap"], dict):
+            data["sitemap"] = sitemap["sitemap"]
+        else:
+            data["sitemap"] = sitemap
 
     return data
 
