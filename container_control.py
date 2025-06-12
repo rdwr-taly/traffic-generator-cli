@@ -110,6 +110,8 @@ def run_traffic_generator_in_loop(config, sitemap):
         traffic_generator_instance = TrafficGenerator(config, sitemap, Metrics())
         logger.info("Starting traffic generation...")
         event_loop.run_until_complete(traffic_generator_instance.start_generating())
+        # Keep the loop running until explicitly stopped
+        event_loop.run_forever()
     except asyncio.CancelledError:
         logger.info("Traffic generation cancelled.")
     except Exception as e:
