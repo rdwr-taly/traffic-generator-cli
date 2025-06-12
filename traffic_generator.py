@@ -689,8 +689,10 @@ class TrafficGenerator:
     def configure_logging(self, debug: bool):
         if debug:
             logger.setLevel(logging.DEBUG)
+            console_handler.setLevel(logging.DEBUG)
         else:
             logger.setLevel(logging.INFO)
+            console_handler.setLevel(logging.INFO)
 
     def create_session(self) -> aiohttp.ClientSession:
         # Note: DNS override is handled by constructing the URL with the IP,
