@@ -85,9 +85,6 @@ keys appear at the top level:
 Additionally, if the `sitemap` object includes metadata (e.g. `id`, `name`, and a
 nested `sitemap` field), the inner `sitemap` is automatically extracted.
 
-Once started, the traffic generator's event loop will continue running until the
-`/api/stop` endpoint is called.
-
 #### Stop Traffic Generation
 ```http
 POST /api/stop

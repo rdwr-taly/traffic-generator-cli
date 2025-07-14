@@ -1,0 +1,61 @@
+# Configuration for Traffic Generator CLI with Container Control Core v2.0
+# Full feature parity with original container_control.py
+
+# --- Adapter Configuration (Required) ---
+adapter:
+  # Our traffic generator adapter class
+  class: traffic_generator_adapter.TrafficGeneratorAdapter
+  
+  # The key that MUST be present in the /api/start payload
+  # Note: Original container_control.py didn't enforce this, so we make it optional
+  # primary_payload_key: config
+  
+  # Run as non-root user for security (matching original setup)
+  run_as_user: app_user
+
+# --- Core Process Management (Disabled - we handle this in the adapter) ---
+# The traffic generator manages its own asyncio tasks, not OS processes
+process_management:
+  enabled: false
+
+# --- Core Metrics Service (Enhanced monitoring) ---
+# Enable to get the same network/system metrics as the original container_control.py
+metrics:
+  # Enable automatic collection of network I/O statistics
+  # This provides the same bytes_sent/recv, packets_sent/recv as original
+  network_monitoring:
+    enabled: true
+    interface: "eth0"
+  
+  # Process monitoring not relevant since we manage our own asyncio tasks
+  process_monitoring:
+    enabled: false
+
+# --- Core Traffic Control (Optional) ---
+# Enable if you want to limit the container's network bandwidth
+traffic_control:
+  enabled: false
+  # interface: "eth0"
+  # bandwidth_mbps_key: "bandwidth_limit_mbps"
+  # default_bandwidth_mbps: 100
+  # latency_ms_key: "latency_in_ms"
+  # default_latency_ms: 0
+
+# --- Privileged Commands (Optional) ---
+# Run system-level commands for network optimization
+privileged_commands:
+  # Commands to run before starting traffic generation
+  pre_start:
+    # Increase network connection limits for high-volume traffic generation
+    - ["sysctl", "-w", "net.core.somaxconn=65536"]
+    - ["sysctl", "-w", "net.core.netdev_max_backlog=5000"]
+    - ["sysctl", "-w", "net.ipv4.tcp_max_syn_backlog=65536"]
+    - ["sysctl", "-w", "net.ipv4.ip_local_port_range=1024 65535"]
+    # Optimize TCP settings for performance
+    - ["sysctl", "-w", "net.ipv4.tcp_fin_timeout=30"]
+    - ["sysctl", "-w", "net.ipv4.tcp_keepalive_time=120"]
+    - ["sysctl", "-w", "net.ipv4.tcp_keepalive_probes=3"]
+    - ["sysctl", "-w", "net.ipv4.tcp_keepalive_intvl=15"]
+  
+  # Commands to run after stopping (cleanup)
+  post_stop: []
