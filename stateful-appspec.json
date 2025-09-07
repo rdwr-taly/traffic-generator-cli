@@ -1,0 +1,195 @@
+{
+  "capabilities": {
+    "can_redeploy": true,
+    "can_resume": true,
+    "can_stop": true,
+    "can_update_while_running": false
+  },
+  "category": "Traffic Tools",
+  "containerControl": {
+    "actions": {
+      "start": {
+        "endpoint": "/api/start",
+        "method": "POST",
+        "payload_template": {
+          "config": {
+            "Debug": "{{env.DEBUG_MODE}}",
+            "Maximum Session Length": "{{env.MAX_SESSION_LENGTH}}",
+            "Minimum Session Length": "{{env.MIN_SESSION_LENGTH}}",
+            "Rate Limit": "{{env.RATE_LIMIT}}",
+            "Simulated Users": "{{env.SIM_USERS}}",
+            "Traffic Generator DNS Override": "{{env.TG_DNS_OVERRIDE}}",
+            "Traffic Generator URL": "{{env.TG_URL}}",
+            "XFF Header Name": "{{env.XFF_HEADER_NAME}}"
+          },
+          "sitemap": "{{sitemap_json_for_env.SITEMAP_ID}}"
+        },
+        "payload_template_type": "custom"
+      },
+      "stop": {
+        "endpoint": "/api/stop",
+        "method": "POST"
+      },
+      "update_config": {
+        "endpoint": "/api/update",
+        "method": "POST",
+        "payload_template_type": "key_value_pairs",
+        "updatable_fields": [
+          "TG_URL",
+          "TG_DNS_OVERRIDE",
+          "XFF_HEADER_NAME",
+          "RATE_LIMIT",
+          "SIM_USERS",
+          "MIN_SESSION_LENGTH",
+          "MAX_SESSION_LENGTH",
+          "DEBUG_MODE"
+        ]
+      }
+    },
+    "api_port_fixed": 8080,
+    "enabled": true,
+    "metrics_endpoint_path": "/api/metrics"
+  },
+  "deployment": {
+    "container_command_template": [
+      "python",
+      "-m",
+      "uvicorn",
+      "container_control_core:app",
+      "--host",
+      "0.0.0.0",
+      "--port",
+      "8080"
+    ],
+    "default_env_vars": [
+      {
+        "label": "Traffic Generator URL",
+        "name": "TG_URL",
+        "required": true,
+        "type": "string"
+      },
+      {
+        "label": "Traffic Generator DNS Override",
+        "name": "TG_DNS_OVERRIDE",
+        "type": "string"
+      },
+      {
+        "default_value": "X-Forwarded-For",
+        "label": "XFF Header Name",
+        "name": "XFF_HEADER_NAME",
+        "type": "string"
+      },
+      {
+        "default_value": "100",
+        "label": "Rate Limit",
+        "name": "RATE_LIMIT",
+        "type": "integer"
+      },
+      {
+        "default_value": "50",
+        "label": "Simulated Users",
+        "name": "SIM_USERS",
+        "type": "integer"
+      },
+      {
+        "default_value": "10",
+        "label": "Minimum Session Length",
+        "name": "MIN_SESSION_LENGTH",
+        "type": "integer"
+      },
+      {
+        "default_value": "30",
+        "label": "Maximum Session Length",
+        "name": "MAX_SESSION_LENGTH",
+        "type": "integer"
+      },
+      {
+        "label": "Select Sitemap",
+        "name": "SITEMAP_ID",
+        "required": true,
+        "type": "string",
+        "ui_type": "sitemap_select"
+      },
+      {
+        "default_value": "false",
+        "label": "Debug",
+        "name": "DEBUG_MODE",
+        "type": "boolean"
+      }
+    ]
+  },
+  "deploymentContext": "app",
+  "description": "Generate continuous web/API traffic for testing using Container Control v2.0.",
+  "displayName": "Continuous Traffic Generator",
+  "icon": "fas fa-sync",
+  "id": "continuous-traffic-generator",
+  "monitoring": {
+    "prometheus": {
+      "enabled": true,
+      "scrape_path": "/metrics",
+      "scrape_port_number": 8080
+    }
+  },
+  "subCategory": "Load Generation",
+  "taskLifecycle": "stateful",
+  "ui": {
+    "card_basic_metrics": [
+      {
+        "label": "CPU",
+        "max_value": 100,
+        "source_path": "system.cpu_percent",
+        "unit": "%"
+      },
+      {
+        "label": "Memory",
+        "max_value": 100,
+        "source_path": "system.memory_percent",
+        "unit": "%"
+      }
+    ],
+    "card_info_fields": [
+      {
+        "label": "Target URL",
+        "source_key": "adapter_metrics.target_url",
+        "source_type": "task_db"
+      }
+    ],
+    "card_primary_metric": {
+      "label": "RPS",
+      "source_path": "adapter_metrics.current_rps",
+      "unit": "rps"
+    },
+    "card_secondary_metrics": [
+      {
+        "label": "Simulated Users",
+        "source_path": "adapter_metrics.simulated_users",
+        "unit": "users"
+      },
+      {
+        "label": "Rate Limit",
+        "source_path": "adapter_metrics.rate_limit",
+        "unit": "req/s"
+      }
+    ],
+    "deployment_form_sections": [
+      {
+        "fields": [
+          "TG_URL",
+          "TG_DNS_OVERRIDE",
+          "XFF_HEADER_NAME",
+          "RATE_LIMIT",
+          "SIM_USERS",
+          "MIN_SESSION_LENGTH",
+          "MAX_SESSION_LENGTH",
+          "SITEMAP_ID",
+          "DEBUG_MODE"
+        ],
+        "title": "Traffic Generator Settings"
+      }
+    ]
+  },
+  "image": {
+    "repo_tag": "razor29/traffic-generator-cli:v1.0.5",
+    "description": ""
+  }
+}
