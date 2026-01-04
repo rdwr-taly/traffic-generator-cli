@@ -698,9 +698,7 @@ class TrafficGenerator:
         # Note: DNS override is handled by constructing the URL with the IP,
         # and setting the Host header. aiohttp's built-in resolver/connector
         # options for DNS override can be complex; this approach is often simpler.
-        connector = aiohttp.TCPConnector(
-            ssl=False if self.original_scheme == "http" else None
-        )  # Basic connector
+        connector = aiohttp.TCPConnector(ssl=False)
         return aiohttp.ClientSession(connector=connector)
 
     async def start_generating(self):
