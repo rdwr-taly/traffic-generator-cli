@@ -11,15 +11,12 @@ from traffic_generator import StartRequest, TrafficGenerator, Metrics
 logger = logging.getLogger("traffic-generator")
 logging.basicConfig(level=logging.INFO)
 
-# -- SDK: App-specific metrics --
+# -- SDK: App-specific metrics (registration is safe at module level) --
 rps_gauge = metrics.gauge("traffic_rps", "Current requests per second")
 users_gauge = metrics.gauge("simulated_users", "Number of simulated users")
 rate_limit_gauge = metrics.gauge("rate_limit", "Current rate limit")
 status_gauge = metrics.gauge("traffic_generator_status", "Generator status (1=running, 0=stopped)")
 metrics.set_app_info(name="traffic-generator", version="1.0.0")
-
-# -- SDK: Start metrics server (port 9090) --
-metrics.start_server()
 
 generator = None
 generator_metrics = None
@@ -139,20 +136,7 @@ def stop_generator():
     health.set_status("stopped")
 
 
-# -- SDK: Config --
-cfg = config.load()
-
-# Register config reload handler (called on SIGHUP)
-config.on_reload(lambda new_cfg: start_generator(new_cfg))
-
-# Start if config available
-if cfg:
-    start_generator(cfg)
-else:
-    health.set_status("waiting", reason="no config")
-    logger.info("Waiting for config at /config/app.json...")
-
-# -- Keep alive: wait for SIGTERM/SIGINT --
+# -- Lifecycle --
 shutdown = threading.Event()
 
 
@@ -162,6 +146,34 @@ def handle_shutdown(signum, frame):
     shutdown.set()
 
 
-signal.signal(signal.SIGTERM, handle_shutdown)
-signal.signal(signal.SIGINT, handle_shutdown)
-shutdown.wait()
+def main():
+    # Start metrics + health server on :9090
+    metrics.start_server()
+
+    # Load initial config
+    cfg = config.load()
+
+    # Register config reload handler (called on SIGHUP)
+    config.on_reload(lambda new_cfg: start_generator(new_cfg))
+
+    # Set initial health status
+    health.set_status("starting")
+
+    # Register shutdown handlers
+    signal.signal(signal.SIGTERM, handle_shutdown)
+    signal.signal(signal.SIGINT, handle_shutdown)
+
+    # Start if config available
+    if cfg:
+        start_generator(cfg)
+    else:
+        health.set_status("waiting", reason="no config")
+        logger.info("Waiting for config at /config/app.json...")
+
+    # Block until shutdown
+    shutdown.wait()
+    logger.info("Shutdown complete")
+
+
+if __name__ == "__main__":
+    main()
