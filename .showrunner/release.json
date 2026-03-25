@@ -1,8 +1,8 @@
 {
-  "image": "",
-  "version": "unreleased",
+  "image": "razor29/traffic-generator-cli:v2.0.0-dev",
+  "version": "v2.0.0-dev",
   "is_latest": false,
-  "released_at": null,
-  "commit": null,
+  "released_at": "2026-03-25T16:46:55Z",
+  "commit": "3f601cf9c5c89337a354fd90090712d70c27caf1",
   "changelog": ""
 }
