@@ -1,0 +1,95 @@
+{
+  "$schema": "showrunner/v1",
+  "id": "traffic-generator-cli",
+  "name": "Traffic Generator CLI",
+  "description": "HTTP traffic generation for load testing and web application stress testing. Supports sitemaps, rate limiting, simulated users, and session management.",
+  "category": "Traffic Tools",
+  "icon": "fas fa-network-wired",
+  "lifecycle": "long-running",
+  "image": {
+    "name": "razor29/traffic-generator-cli"
+  },
+  "sdk": {
+    "version": ">=0.1.0",
+    "metrics_port": 9090,
+    "health_path": "/healthz",
+    "metrics_path": "/metrics"
+  },
+  "config_schema": {
+    "type": "object",
+    "properties": {
+      "url": {
+        "type": "string",
+        "title": "Target URL",
+        "description": "Base URL to generate traffic against"
+      },
+      "dns_override": {
+        "type": "string",
+        "title": "DNS Override",
+        "description": "Override DNS resolution (ip:port)"
+      },
+      "xff_header_name": {
+        "type": "string",
+        "title": "XFF Header Name",
+        "default": "X-Forwarded-For"
+      },
+      "rate_limit": {
+        "type": "integer",
+        "title": "Rate Limit (RPS)",
+        "default": 10,
+        "description": "Maximum requests per second"
+      },
+      "sim_users": {
+        "type": "integer",
+        "title": "Simulated Users",
+        "default": 5
+      },
+      "min_session_length": {
+        "type": "integer",
+        "title": "Min Session Length",
+        "default": 5
+      },
+      "max_session_length": {
+        "type": "integer",
+        "title": "Max Session Length",
+        "default": 15
+      },
+      "sitemap": {
+        "type": "object",
+        "title": "Sitemap",
+        "description": "Sitemap definition for traffic paths"
+      },
+      "debug": {
+        "type": "boolean",
+        "title": "Debug Mode",
+        "default": false
+      }
+    },
+    "required": ["url"]
+  },
+  "ui": {
+    "sections": [
+      {
+        "title": "Target Configuration",
+        "fields": ["url", "dns_override", "xff_header_name"]
+      },
+      {
+        "title": "Load Settings",
+        "fields": ["rate_limit", "sim_users", "min_session_length", "max_session_length"]
+      },
+      {
+        "title": "Advanced",
+        "fields": ["sitemap", "debug"]
+      }
+    ],
+    "card_fields": {
+      "primary_label": "url",
+      "metrics": ["traffic_rps", "simulated_users"]
+    }
+  },
+  "capabilities": {
+    "can_stop": true,
+    "can_redeploy": true,
+    "can_resume": false
+  }
+}
