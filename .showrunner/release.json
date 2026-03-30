@@ -2,7 +2,7 @@
   "image": "razor29/traffic-generator-cli:v2.0.0-dev",
   "version": "v2.0.0-dev",
   "is_latest": false,
-  "released_at": "2026-03-25T16:46:55Z",
-  "commit": "3f601cf9c5c89337a354fd90090712d70c27caf1",
+  "released_at": "2026-03-30T08:07:47Z",
+  "commit": "df5bc4b88a43d0a6e91c8037afb1ec56009aca2e",
   "changelog": ""
 }
