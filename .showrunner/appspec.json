@@ -6,61 +6,7 @@
     "can_update_while_running": false
   },
   "category": "Traffic Tools",
-  "containerControl": {
-    "actions": {
-      "start": {
-        "endpoint": "/api/start",
-        "method": "POST",
-        "payload_template": {
-          "config": {
-            "Debug": "{{env.DEBUG_MODE}}",
-            "Maximum Session Length": "{{env.MAX_SESSION_LENGTH}}",
-            "Minimum Session Length": "{{env.MIN_SESSION_LENGTH}}",
-            "Rate Limit": "{{env.RATE_LIMIT}}",
-            "Simulated Users": "{{env.SIM_USERS}}",
-            "Traffic Generator DNS Override": "{{env.TG_DNS_OVERRIDE}}",
-            "Traffic Generator URL": "{{env.TG_URL}}",
-            "XFF Header Name": "{{env.XFF_HEADER_NAME}}"
-          },
-          "sitemap": "{{sitemap_json_for_env.SITEMAP_ID}}"
-        },
-        "payload_template_type": "custom"
-      },
-      "stop": {
-        "endpoint": "/api/stop",
-        "method": "POST"
-      },
-      "update_config": {
-        "endpoint": "/api/update",
-        "method": "POST",
-        "payload_template_type": "key_value_pairs",
-        "updatable_fields": [
-          "TG_URL",
-          "TG_DNS_OVERRIDE",
-          "XFF_HEADER_NAME",
-          "RATE_LIMIT",
-          "SIM_USERS",
-          "MIN_SESSION_LENGTH",
-          "MAX_SESSION_LENGTH",
-          "DEBUG_MODE"
-        ]
-      }
-    },
-    "api_port_fixed": 8080,
-    "enabled": true,
-    "metrics_endpoint_path": "/api/metrics"
-  },
   "deployment": {
-    "container_command_template": [
-      "python",
-      "-m",
-      "uvicorn",
-      "container_control_core:app",
-      "--host",
-      "0.0.0.0",
-      "--port",
-      "8080"
-    ],
     "default_env_vars": [
       {
         "label": "Traffic Generator URL",
@@ -116,10 +62,23 @@
         "name": "DEBUG_MODE",
         "type": "boolean"
       }
-    ]
+    ],
+    "sdk_config_template": {
+      "config": {
+        "Debug": "{{env.DEBUG_MODE}}",
+        "Maximum Session Length": "{{env.MAX_SESSION_LENGTH}}",
+        "Minimum Session Length": "{{env.MIN_SESSION_LENGTH}}",
+        "Rate Limit": "{{env.RATE_LIMIT}}",
+        "Simulated Users": "{{env.SIM_USERS}}",
+        "Traffic Generator DNS Override": "{{env.TG_DNS_OVERRIDE}}",
+        "Traffic Generator URL": "{{env.TG_URL}}",
+        "XFF Header Name": "{{env.XFF_HEADER_NAME}}"
+      },
+      "sitemap": "{{sitemap_json_for_env.SITEMAP_ID}}"
+    }
   },
   "deploymentContext": "app",
-  "description": "Generate continuous web/API traffic for testing using Container Control v2.0.",
+  "description": "Generate continuous web/API traffic for testing using ShowRunner SDK.",
   "displayName": "Traffic Generator",
   "icon": "fas fa-sync",
   "id": "traffic-generator-cli",
@@ -152,7 +111,7 @@
     "prometheus": {
       "enabled": true,
       "scrape_path": "/metrics",
-      "scrape_port_number": 8080
+      "scrape_port_number": 9090
     }
   },
   "subCategory": "Load Generation",
