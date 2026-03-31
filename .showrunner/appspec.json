@@ -134,24 +134,24 @@
     "card_info_fields": [
       {
         "label": "Target URL",
-        "source_key": "adapter_metrics.target_url",
-        "source_type": "task_db"
+        "source_key": "TG_URL",
+        "source_type": "env_var"
       }
     ],
     "card_primary_metric": {
       "label": "RPS",
-      "source_path": "adapter_metrics.current_rps",
+      "source_path": "traffic_rps",
       "unit": "rps"
     },
     "card_secondary_metrics": [
       {
         "label": "Simulated Users",
-        "source_path": "adapter_metrics.simulated_users",
+        "source_path": "simulated_users",
         "unit": "users"
       },
       {
         "label": "Rate Limit",
-        "source_path": "adapter_metrics.rate_limit",
+        "source_path": "rate_limit",
         "unit": "req/s"
       }
     ],
