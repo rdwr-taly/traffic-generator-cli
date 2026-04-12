@@ -7,6 +7,19 @@
   },
   "category": "Traffic Tools",
   "deployment": {
+    "sdk_config_template": {
+      "config": {
+        "Traffic Generator URL": "{{env.TG_URL}}",
+        "Traffic Generator DNS Override": "{{env.TG_DNS_OVERRIDE}}",
+        "XFF Header Name": "{{env.XFF_HEADER_NAME}}",
+        "Rate Limit": "{{env.RATE_LIMIT}}",
+        "Simulated Users": "{{env.SIM_USERS}}",
+        "Minimum Session Length": "{{env.MIN_SESSION_LENGTH}}",
+        "Maximum Session Length": "{{env.MAX_SESSION_LENGTH}}",
+        "Debug": "{{env.DEBUG_MODE}}"
+      },
+      "sitemap": "{{sitemap_json_for_env.SITEMAP_ID}}"
+    },
     "default_env_vars": [
       {
         "label": "Traffic Generator URL",
@@ -26,25 +39,25 @@
         "type": "string"
       },
       {
-        "default_value": "100",
+        "default_value": 100,
         "label": "Rate Limit",
         "name": "RATE_LIMIT",
         "type": "integer"
       },
       {
-        "default_value": "50",
+        "default_value": 50,
         "label": "Simulated Users",
         "name": "SIM_USERS",
         "type": "integer"
       },
       {
-        "default_value": "10",
+        "default_value": 10,
         "label": "Minimum Session Length",
         "name": "MIN_SESSION_LENGTH",
         "type": "integer"
       },
       {
-        "default_value": "30",
+        "default_value": 30,
         "label": "Maximum Session Length",
         "name": "MAX_SESSION_LENGTH",
         "type": "integer"
@@ -57,25 +70,12 @@
         "ui_type": "sitemap_select"
       },
       {
-        "default_value": "false",
+        "default_value": false,
         "label": "Debug",
         "name": "DEBUG_MODE",
         "type": "boolean"
       }
-    ],
-    "sdk_config_template": {
-      "config": {
-        "Debug": "{{env.DEBUG_MODE}}",
-        "Maximum Session Length": "{{env.MAX_SESSION_LENGTH}}",
-        "Minimum Session Length": "{{env.MIN_SESSION_LENGTH}}",
-        "Rate Limit": "{{env.RATE_LIMIT}}",
-        "Simulated Users": "{{env.SIM_USERS}}",
-        "Traffic Generator DNS Override": "{{env.TG_DNS_OVERRIDE}}",
-        "Traffic Generator URL": "{{env.TG_URL}}",
-        "XFF Header Name": "{{env.XFF_HEADER_NAME}}"
-      },
-      "sitemap": "{{sitemap_json_for_env.SITEMAP_ID}}"
-    }
+    ]
   },
   "deploymentContext": "app",
   "description": "Generate continuous web/API traffic for testing using ShowRunner SDK.",
@@ -87,12 +87,12 @@
     {
       "description": "Generate traffic continuously until stopped.",
       "isDefault": true,
-      "label": "Continuous Traffic",
+      "label": "Continuous",
       "lifecycle": "stateful"
     },
     {
-      "description": "Generate traffic during a specific time window.",
-      "label": "Scheduled Traffic Window",
+      "description": "Generate traffic during a scheduled time window (start to end time).",
+      "label": "Scheduled",
       "lifecycle": "scheduled",
       "scheduling_fields": {
         "end_time_utc": {
@@ -141,18 +141,20 @@
     "card_primary_metric": {
       "label": "RPS",
       "source_path": "traffic_rps",
-      "unit": "rps"
+      "unit": ""
     },
     "card_secondary_metrics": [
       {
         "label": "Simulated Users",
         "source_path": "simulated_users",
-        "unit": "users"
+        "fallback_env_var": "SIM_USERS",
+        "unit": ""
       },
       {
         "label": "Rate Limit",
         "source_path": "rate_limit",
-        "unit": "req/s"
+        "fallback_env_var": "RATE_LIMIT",
+        "unit": ""
       }
     ],
     "deployment_form_sections": [
@@ -171,5 +173,6 @@
         "title": "Traffic Generator Settings"
       }
     ]
-  }
+  },
+  "schema_version": 6
 }
