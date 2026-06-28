@@ -16,7 +16,9 @@
         "Simulated Users": "{{env.SIM_USERS}}",
         "Minimum Session Length": "{{env.MIN_SESSION_LENGTH}}",
         "Maximum Session Length": "{{env.MAX_SESSION_LENGTH}}",
-        "Debug": "{{env.DEBUG_MODE}}"
+        "Debug": "{{env.DEBUG_MODE}}",
+        "Ignore SSL Errors": "{{env.IGNORE_SSL_ERRORS}}",
+        "Trusted CA Certificate": "{{env.TRUSTED_CA_CERT}}"
       },
       "sitemap": "{{sitemap_json_for_env.SITEMAP_ID}}"
     },
@@ -74,6 +76,18 @@
         "label": "Debug",
         "name": "DEBUG_MODE",
         "type": "boolean"
+      },
+      {
+        "default_value": true,
+        "label": "Ignore SSL Errors",
+        "name": "IGNORE_SSL_ERRORS",
+        "type": "boolean"
+      },
+      {
+        "label": "Trusted CA Certificate (PEM)",
+        "name": "TRUSTED_CA_CERT",
+        "type": "string",
+        "ui_type": "json_textarea"
       }
     ]
   },
@@ -168,7 +182,9 @@
           "MIN_SESSION_LENGTH",
           "MAX_SESSION_LENGTH",
           "SITEMAP_ID",
-          "DEBUG_MODE"
+          "DEBUG_MODE",
+          "IGNORE_SSL_ERRORS",
+          "TRUSTED_CA_CERT"
         ],
         "title": "Traffic Generator Settings"
       }

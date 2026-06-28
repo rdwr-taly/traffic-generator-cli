@@ -2,6 +2,7 @@
 
 import asyncio
 import aiohttp
+import ssl
 import json
 import random
 import time
@@ -200,6 +201,9 @@ class ContainerConfig(BaseModel):
     min_session_length: int = Field(..., alias="Minimum Session Length")
     max_session_length: int = Field(..., alias="Maximum Session Length")
     debug: Optional[bool] = Field(False, alias="Debug")
+    # Defaults preserve the prior always-insecure behavior (connector used ssl=False).
+    ignore_ssl_errors: bool = Field(True, alias="Ignore SSL Errors")
+    trusted_ca_cert: Optional[str] = Field(None, alias="Trusted CA Certificate")
 
     class Config:
         allow_population_by_field_name = True
@@ -694,11 +698,33 @@ class TrafficGenerator:
             logger.setLevel(logging.INFO)
             console_handler.setLevel(logging.INFO)
 
+    def _build_ssl_param(self):
+        """Resolve the aiohttp ``ssl`` connector argument from config.
+
+        Precedence:
+          1. ``ignore_ssl_errors`` -> ``False`` (disable TLS verification, like ``curl -k``).
+             Defaults to True, preserving this tool's prior always-insecure behavior.
+          2. ``trusted_ca_cert``   -> an ``SSLContext`` trusting that CA plus the system store.
+          3. otherwise             -> default verification (``None``; applies only to HTTPS).
+        """
+        if self.config.ignore_ssl_errors:
+            return False
+        ca = (self.config.trusted_ca_cert or "").strip()
+        if ca:
+            try:
+                ctx = ssl.create_default_context()
+                ctx.load_verify_locations(cadata=ca)
+                logger.info("Loaded custom Trusted CA Certificate for TLS verification.")
+                return ctx
+            except Exception as e:
+                logger.error(f"Failed to load Trusted CA Certificate; using default verification. Error: {e}")
+        return None
+
     def create_session(self) -> aiohttp.ClientSession:
         # Note: DNS override is handled by constructing the URL with the IP,
         # and setting the Host header. aiohttp's built-in resolver/connector
         # options for DNS override can be complex; this approach is often simpler.
-        connector = aiohttp.TCPConnector(ssl=False)
+        connector = aiohttp.TCPConnector(ssl=self._build_ssl_param())
         return aiohttp.ClientSession(connector=connector)
 
     async def start_generating(self):
