@@ -244,6 +244,11 @@ class Metrics:
     def __init__(self):
         self.lock = asyncio.Lock()
         self.request_timestamps = deque()
+        # SR3: cumulative per-status-code accounting for /report/report.json.
+        # RPS above is a rolling instantaneous gauge; these are run totals.
+        self.status_counts: dict = {}
+        self.total_responses = 0
+        self.error_responses = 0  # HTTP status >= 400
 
     async def increment(self):
         now = time.monotonic()
@@ -252,6 +257,28 @@ class Metrics:
             # Trim timestamps older than 1 second
             while self.request_timestamps and (now - self.request_timestamps[0]) > 1:
                 self.request_timestamps.popleft()
+
+    async def record_status(self, status: int):
+        """Record one HTTP response by its status code (SR3 report totals)."""
+        key = str(status)
+        async with self.lock:
+            self.status_counts[key] = self.status_counts.get(key, 0) + 1
+            self.total_responses += 1
+            if status >= 400:
+                self.error_responses += 1
+
+    def snapshot(self) -> dict:
+        """Plain, GIL-atomic read of cumulative counters for the report writer.
+
+        Called from the shutdown path after the run loop has stopped, so no
+        concurrent writers race here; ``dict(...)`` is atomic under the GIL even
+        if one did.
+        """
+        return {
+            "status_counts": dict(self.status_counts),
+            "total": self.total_responses,
+            "errors": self.error_responses,
+        }
 
     async def get_rps(self):
         now = time.monotonic()
@@ -1259,6 +1286,8 @@ class TrafficGenerator:
             ) as resp:
                 # Consume the response body fully to free up the connection
                 await resp.read()
+                # SR3: count every HTTP response by status code for the report.
+                await self.metrics.record_status(resp.status)
                 # Always log the response status when debug logging is enabled
                 logger.debug(f"Response {resp.status} for {method} {final_url}")
                 # Log errors/warnings based on status code

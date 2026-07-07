@@ -92,10 +92,10 @@
     ]
   },
   "deploymentContext": "app",
-  "description": "Generate continuous web/API traffic for testing using ShowRunner SDK.",
-  "displayName": "Traffic Generator",
+  "description": "Generate continuous web/API traffic for testing using ShowRunner SDK. Writes /report/report.json for ShowRunner to pull (per-status-code measures + target-health playbook).",
+  "displayName": "Traffic Generator (SR3)",
   "icon": "fas fa-sync",
-  "id": "traffic-generator-cli",
+  "id": "traffic-generator-cli-sr3",
   "image_id_ref": "razor29/traffic-generator-cli",
   "lifecycleOptions": [
     {
@@ -126,6 +126,76 @@
       "enabled": true,
       "scrape_path": "/metrics",
       "scrape_port_number": 9090
+    }
+  },
+  "sdk": {
+    "contract_version": 1,
+    "capabilities": ["report_pull_file", "measures"],
+    "reporting": {
+      "mode": "file",
+      "path": "/report/report.json",
+      "sealed_field": "status",
+      "sealed_value": "final",
+      "poll_interval_sec": 30
+    },
+    "measures": [
+      {
+        "key": "responses.by_code",
+        "label": "HTTP response codes",
+        "type": "count_by_enum",
+        "unit": "responses",
+        "options": [200, 301, 400, 403, 404, 429, 500, 503],
+        "options_open": true,
+        "source": { "kind": "report_json", "path": "responses.by_code" },
+        "success_checkable": true
+      },
+      {
+        "key": "responses.total",
+        "label": "Total responses",
+        "type": "count",
+        "unit": "responses",
+        "source": { "kind": "report_json", "path": "responses.total" },
+        "success_checkable": true
+      },
+      {
+        "key": "responses.errors",
+        "label": "Error responses (>= 400)",
+        "type": "count",
+        "unit": "responses",
+        "source": { "kind": "report_json", "path": "responses.errors" },
+        "success_checkable": true
+      },
+      {
+        "key": "responses.error_ratio",
+        "label": "Error ratio",
+        "type": "ratio",
+        "unit": "fraction",
+        "higher_is_better": false,
+        "source": { "kind": "report_json", "path": "responses.error_ratio" },
+        "success_checkable": true
+      },
+      {
+        "key": "rps",
+        "label": "Requests/sec",
+        "type": "number",
+        "unit": "rps",
+        "source": { "kind": "prometheus", "metric": "traffic_rps" },
+        "success_checkable": false
+      }
+    ],
+    "default_playbook": {
+      "steps": [
+        {
+          "id": "target_absorbed_traffic",
+          "name": "Target stayed healthy under legitimate load",
+          "check": { "source": "report", "field": "responses.error_ratio", "op": "<", "value": 0.5 }
+        },
+        {
+          "id": "traffic_flowed",
+          "name": "Traffic reached the target",
+          "check": { "source": "report", "field": "responses.total", "op": ">=", "value": 1 }
+        }
+      ]
     }
   },
   "subCategory": "Load Generation",
@@ -190,5 +260,5 @@
       }
     ]
   },
-  "schema_version": 6
+  "schema_version": 7
 }

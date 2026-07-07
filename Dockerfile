@@ -20,6 +20,9 @@ RUN adduser --disabled-login --gecos "" appuser \
 
 RUN mkdir -p /config && chown appuser:appuser /config
 
+# SR3: report drop directory pulled by ShowRunner at window close.
+RUN mkdir -p /report && chown appuser:appuser /report
+
 USER appuser
 
 EXPOSE 9090

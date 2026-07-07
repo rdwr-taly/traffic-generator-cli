@@ -7,6 +7,7 @@ import threading
 
 from showrunner_sdk import config, metrics, health
 from traffic_generator import StartRequest, TrafficGenerator, Metrics
+import sr3_report
 
 logger = logging.getLogger("traffic-generator")
 logging.basicConfig(level=logging.INFO)
@@ -24,6 +25,33 @@ event_loop = None
 run_thread = None
 metrics_thread = None
 _metrics_running = False
+
+# SR3: last known metrics snapshot + a guard so we write /report/report.json
+# exactly once, on the first terminal exit path (signal or main() finally).
+_last_snapshot = None
+_report_written = False
+
+
+def write_sr3_report():
+    """Write /report/report.json from the latest metrics snapshot.
+
+    Best-effort and idempotent: the first successful write wins so a later
+    fallback call (with the metrics already cleared) cannot clobber it with an
+    empty report. Never raises.
+    """
+    global _report_written
+    if _report_written:
+        return
+    snap = None
+    try:
+        if generator_metrics is not None:
+            snap = generator_metrics.snapshot()
+        elif _last_snapshot is not None:
+            snap = _last_snapshot
+    except Exception as e:  # pragma: no cover - defensive
+        logger.error(f"Failed to read metrics snapshot for SR3 report: {e}")
+    if sr3_report.write_report(snap):
+        _report_written = True
 
 
 def _run_metrics_sampler():
@@ -102,9 +130,17 @@ def start_generator(cfg_data):
 def stop_generator():
     """Stop the generator and clean up threads."""
     global generator, generator_metrics, event_loop, run_thread
-    global metrics_thread, _metrics_running
+    global metrics_thread, _metrics_running, _last_snapshot
 
     _metrics_running = False
+
+    # SR3: preserve the final counters before the metrics object is cleared so
+    # the report writer still has data even if it runs after this teardown.
+    if generator_metrics is not None:
+        try:
+            _last_snapshot = generator_metrics.snapshot()
+        except Exception:
+            pass
 
     if generator and event_loop and not event_loop.is_closed():
         try:
@@ -143,6 +179,8 @@ shutdown = threading.Event()
 def handle_shutdown(signum, frame):
     logger.info("Shutdown signal received")
     stop_generator()
+    # SR3: seal the report once traffic has stopped and counters are final.
+    write_sr3_report()
     shutdown.set()
 
 
@@ -171,7 +209,12 @@ def main():
         logger.info("Waiting for config at /config/app.json...")
 
     # Block until shutdown
-    shutdown.wait()
+    try:
+        shutdown.wait()
+    finally:
+        # SR3: catch-all so the report is written even on an unexpected exit.
+        # Idempotent — handle_shutdown() has usually already sealed it.
+        write_sr3_report()
     logger.info("Shutdown complete")
 
 

@@ -1,8 +1,8 @@
 {
-  "image": "razor29/traffic-generator-cli:v2.1.0-dev",
-  "version": "v2.1.0-dev",
+  "image": "razor29/traffic-generator-cli:v2.2.0-sr3",
+  "version": "v2.2.0-sr3",
   "is_latest": false,
-  "released_at": "2026-06-28T12:22:55Z",
-  "commit": "58a5d4488b6ae7a7133f50dd35887d55e87d1c32",
-  "changelog": ""
+  "released_at": "2026-07-07T00:00:00Z",
+  "commit": "",
+  "changelog": "SR3 pilot: /report/report.json"
 }
