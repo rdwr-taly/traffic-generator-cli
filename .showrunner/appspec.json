@@ -93,9 +93,9 @@
   },
   "deploymentContext": "app",
   "description": "Generate continuous web/API traffic for testing using ShowRunner SDK. Writes /report/report.json for ShowRunner to pull (per-status-code measures + target-health playbook).",
-  "displayName": "Traffic Generator (SR3)",
+  "displayName": "Traffic Generator",
   "icon": "fas fa-sync",
-  "id": "traffic-generator-cli-sr3",
+  "id": "traffic-generator-cli",
   "image_id_ref": "razor29/traffic-generator-cli",
   "lifecycleOptions": [
     {
