@@ -471,7 +471,6 @@ class TrafficGenerator:
                 "Accept": "application/json",
                 "Accept-Language": "en-US,en;q=0.5",
                 "Connection": "keep-alive",
-                "X-Requested-With": "XMLHttpRequest",
             },
             {
                 "Accept": "application/x-www-form-urlencoded",
