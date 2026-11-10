@@ -751,7 +751,14 @@ class TrafficGenerator:
         # and setting the Host header. aiohttp's built-in resolver/connector
         # options for DNS override can be complex; this approach is often simpler.
         connector = aiohttp.TCPConnector(ssl=self._build_ssl_param())
-        return aiohttp.ClientSession(connector=connector)
+        # unsafe=True: aiohttp's default jar refuses cookies from IP-address
+        # hosts, so targets given as an IP (or reached via the DNS override,
+        # which puts the IP in the URL) lost every cookie, a form login's
+        # session cookie included. Each simulated user has its own session,
+        # so this only makes IP targets keep cookies like hostnames already do.
+        return aiohttp.ClientSession(
+            connector=connector, cookie_jar=aiohttp.CookieJar(unsafe=True)
+        )
 
     async def start_generating(self):
         if self.running:
@@ -1115,8 +1122,19 @@ class TrafficGenerator:
                             # Decide if this is acceptable (e.g., cookie-based session established)
                             return "authenticated_no_token"  # Indicate success without a specific token to carry
                     except aiohttp.ContentTypeError:
+                        # Not JSON: an HTML form login with a cookie session.
+                        # Those redirect on success (POST-redirect-GET) and
+                        # re-render the form, or bounce back to it, on failure.
+                        # A 200 or a cookie alone proves nothing: Hackazon sets
+                        # its session cookie on every page, failed logins too.
+                        if resp.history and resp.url.path != urlparse(auth_url).path:
+                            logger.debug(
+                                f"Form login redirected to {resp.url.path}; using the session cookie."
+                            )
+                            return "authenticated_no_token"
                         logger.error(
-                            f"Auth failed: Response from {auth_url} was not JSON (status {resp.status})."
+                            f"Auth failed: {auth_url} answered non-JSON (status {resp.status}) "
+                            "without redirecting away from the login page."
                         )
                         return None
                     except json.JSONDecodeError:

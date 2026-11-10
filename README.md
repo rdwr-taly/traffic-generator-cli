@@ -24,7 +24,7 @@ The Traffic Generator CLI is a containerized Python application that generates r
 #### Authentication Support
 - **Basic Authentication**: Username/password authentication
 - **Bearer Token**: JWT and other token-based authentication
-- **Form Data**: Login form submission
+- **Form Data** (`body_params`): Login form submission, including HTML login pages that keep the user in a session cookie
 - **JSON Body**: Authentication via JSON payload
 - **Query Parameters**: Authentication via URL parameters
 - **Custom Headers**: Custom authentication header support
@@ -159,9 +159,9 @@ Returns Prometheus-formatted metrics for monitoring and alerting.
 #### Authentication Configuration
 ```json
 {
-  "auth_method": "login_path",
+  "auth_method": "POST",
   "auth_path": "/api/auth/login",
-  "auth_type": "basic|bearer|form_data|json_body|query_params|custom_headers",
+  "auth_type": "basic|bearer|body_params|json_body|query_params|custom_header",
   "credentials": {
     "header": {"Authorization": "Bearer token"},
     "body_params": {"username": "user", "password": "pass"},
@@ -169,6 +169,18 @@ Returns Prometheus-formatted metrics for monitoring and alerting.
   }
 }
 ```
+
+About half of the simulated users log in once, when they start; the rest stay anonymous. A user that logs in
+also gets the `paths_auth_req` groups, and groups are picked with equal weight.
+
+How a login counts as successful:
+- **JSON response**: a 2xx. A `token`, `auth_token` or `access_token` in the body is then sent as
+  `Authorization: Bearer <token>` on every request.
+- **HTML response** (a website's login form, e.g. `body_params` against Hackazon's `/user/login`): only if the
+  login redirected away from `auth_path`, the usual POST-redirect-GET on success. A form re-rendered with 200,
+  or a redirect back to the login page, is a failed login. Many sites set a session cookie on every page, so a
+  cookie or a 200 alone doesn't prove anything. The session cookie then carries the login. Cookies are kept
+  for IP-address targets too.
 
 #### Variable Definitions
 ```json
@@ -246,7 +258,7 @@ curl -X POST http://localhost:8080/api/start \
     "sitemap": {
       "has_auth": true,
       "auth": {
-        "auth_method": "login_path",
+        "auth_method": "POST",
         "auth_path": "/api/auth/login",
         "auth_type": "json_body",
         "credentials": {
